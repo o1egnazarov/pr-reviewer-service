@@ -1,0 +1,103 @@
+package ru.noleg.prreviewerservice.entity;
+
+import jakarta.persistence.*;
+
+import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
+
+@Entity
+@Table(name = "pull_requests")
+public class PullRequestEntity {
+
+    @Id
+    @Column(name = "id")
+    private String id;
+
+    @Column(name = "title", nullable = false)
+    private String title;
+
+    @Column(name = "status", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private PullRequestStatus status = PullRequestStatus.OPEN;
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "author_id")
+    private UserEntity author;
+
+    @ManyToMany
+    @JoinTable(name = "pull_requests_reviewers",
+            joinColumns = @JoinColumn(name = "pull_request_id"),
+            inverseJoinColumns = @JoinColumn(name = "reviewer_id")
+    )
+    private Set<UserEntity> reviewers = new HashSet<>();
+
+    @Column(name = "need_more_reviewers", nullable = false)
+    private boolean needMoreReviewers;
+
+    @Column(name = "merged_at")
+    private LocalDateTime mergedAt;
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public PullRequestStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(PullRequestStatus status) {
+        this.status = status;
+    }
+
+    public UserEntity getAuthor() {
+        return author;
+    }
+
+    public void setAuthor(UserEntity author) {
+        this.author = author;
+    }
+
+    public Set<UserEntity> getReviewers() {
+        return reviewers;
+    }
+
+    public void setReviewers(Set<UserEntity> reviewers) {
+        this.reviewers = reviewers;
+    }
+
+    public void setNeedMoreReviewers(boolean needMoreReviewers) {
+        this.needMoreReviewers = needMoreReviewers;
+    }
+
+    public void setMergedAt(LocalDateTime mergedAt) {
+        this.mergedAt = mergedAt;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        PullRequestEntity that = (PullRequestEntity) o;
+        return needMoreReviewers == that.needMoreReviewers &&
+                Objects.equals(id, that.id) &&
+                Objects.equals(title, that.title) &&
+                status == that.status &&
+                Objects.equals(author, that.author) &&
+                Objects.equals(reviewers, that.reviewers) &&
+                Objects.equals(mergedAt, that.mergedAt);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, title, status, author, reviewers, needMoreReviewers, mergedAt);
+    }
+}

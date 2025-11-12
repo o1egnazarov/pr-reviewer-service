@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16
+    container_name: pr_reviewer_db_container
+    environment:
+      POSTGRES_USER: noleg
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: pr_reviewer_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
