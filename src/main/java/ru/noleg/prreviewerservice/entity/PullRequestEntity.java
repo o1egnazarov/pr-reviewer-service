@@ -83,6 +83,10 @@ public class PullRequestEntity {
         this.mergedAt = mergedAt;
     }
 
+    public String getTitle() {
+        return title;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
@@ -91,13 +95,11 @@ public class PullRequestEntity {
                 Objects.equals(id, that.id) &&
                 Objects.equals(title, that.title) &&
                 status == that.status &&
-                Objects.equals(author, that.author) &&
-                Objects.equals(reviewers, that.reviewers) &&
                 Objects.equals(mergedAt, that.mergedAt);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, title, status, author, reviewers, needMoreReviewers, mergedAt);
+        return Objects.hash(id, title, status, needMoreReviewers, mergedAt);
     }
 }

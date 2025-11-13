@@ -7,4 +7,8 @@ public class DomainException extends RuntimeException {
         super(message);
         this.code = code;
     }
+
+    public ErrorCode getErrorCode() {
+        return code;
+    }
 }

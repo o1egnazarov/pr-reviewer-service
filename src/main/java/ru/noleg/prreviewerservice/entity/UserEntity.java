@@ -22,7 +22,7 @@ public class UserEntity {
 
     @ManyToOne
     @JoinColumn(name = "team_id")
-    private TeamEntity teamEntity;
+    private TeamEntity team;
 
     @OneToMany(mappedBy = "author")
     private Set<PullRequestEntity> authoredPullRequestEntities = new HashSet<>();
@@ -55,11 +55,11 @@ public class UserEntity {
     }
 
     public TeamEntity getTeam() {
-        return teamEntity;
+        return team;
     }
 
     public void setTeam(TeamEntity teamEntity) {
-        this.teamEntity = teamEntity;
+        this.team = teamEntity;
     }
 
     @Override
@@ -68,14 +68,11 @@ public class UserEntity {
         UserEntity userEntity = (UserEntity) o;
         return isActive == userEntity.isActive &&
                 Objects.equals(id, userEntity.id) &&
-                Objects.equals(username, userEntity.username) &&
-                Objects.equals(teamEntity, userEntity.teamEntity) &&
-                Objects.equals(authoredPullRequestEntities, userEntity.authoredPullRequestEntities) &&
-                Objects.equals(reviewingPullRequestEntities, userEntity.reviewingPullRequestEntities);
+                Objects.equals(username, userEntity.username);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, username, isActive, teamEntity, authoredPullRequestEntities, reviewingPullRequestEntities);
+        return Objects.hash(id, username, isActive);
     }
 }

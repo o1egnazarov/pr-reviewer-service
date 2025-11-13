@@ -17,8 +17,9 @@ public class TeamEntity {
     @OneToMany(mappedBy = "team", cascade = CascadeType.ALL)
     private Set<UserEntity> members = new HashSet<>();
 
-    public void addMember(UserEntity userEntity) {
-        members.add(userEntity);
+    public void addMember(UserEntity user) {
+        members.add(user);
+        user.setTeam(this);
     }
 
     public String getTitle() {
@@ -33,16 +34,19 @@ public class TeamEntity {
         this.members = members;
     }
 
+    public Set<UserEntity> getMembers() {
+        return members;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         TeamEntity teamEntity = (TeamEntity) o;
-        return Objects.equals(title, teamEntity.title) &&
-                Objects.equals(members, teamEntity.members);
+        return Objects.equals(title, teamEntity.title);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(title, members);
+        return Objects.hash(title);
     }
 }
