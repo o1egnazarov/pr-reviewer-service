@@ -6,6 +6,7 @@ import ru.noleg.prreviewerservice.entity.TeamEntity;
 import ru.noleg.prreviewerservice.entity.UserEntity;
 import ru.noleg.prreviewerservice.exception.DomainException;
 import ru.noleg.prreviewerservice.exception.ErrorCode;
+import ru.noleg.prreviewerservice.exception.NotFoundException;
 import ru.noleg.prreviewerservice.repository.TeamRepository;
 import ru.noleg.prreviewerservice.service.TeamService;
 
@@ -54,7 +55,7 @@ public class TeamServiceDefaultImpl implements TeamService {
     @Transactional(readOnly = true)
     public TeamEntity getTeam(String title) {
         return teamRepository.findByTitle(title).orElseThrow(
-                () -> new DomainException(ErrorCode.NOT_FOUND, "Team with title " + title + " not found!")
+                () -> new NotFoundException(ErrorCode.NOT_FOUND, "Team with title " + title + " not found!")
         );
     }
 }

@@ -11,6 +11,7 @@ import ru.noleg.prreviewerservice.entity.TeamEntity;
 import ru.noleg.prreviewerservice.entity.UserEntity;
 import ru.noleg.prreviewerservice.exception.DomainException;
 import ru.noleg.prreviewerservice.exception.ErrorCode;
+import ru.noleg.prreviewerservice.exception.NotFoundException;
 import ru.noleg.prreviewerservice.repository.PullRequestRepository;
 import ru.noleg.prreviewerservice.repository.UserRepository;
 import ru.noleg.prreviewerservice.service.impl.PullRequestServiceDefaultImpl;
@@ -136,7 +137,7 @@ class PullRequestServiceTest {
         when(userRepository.findById(authorId)).thenReturn(Optional.empty());
 
         // Act | Assert
-        DomainException ex = assertThrows(DomainException.class,
+        NotFoundException ex = assertThrows(NotFoundException.class,
                 () -> pullRequestService.createPullRequest(prId, title, authorId)
         );
 
@@ -159,7 +160,7 @@ class PullRequestServiceTest {
         when(userRepository.findById(authorId)).thenReturn(Optional.of(author));
 
         // Act | Assert
-        DomainException ex = assertThrows(DomainException.class,
+        NotFoundException ex = assertThrows(NotFoundException.class,
                 () -> pullRequestService.createPullRequest(prId, title, authorId)
         );
 
@@ -195,7 +196,7 @@ class PullRequestServiceTest {
         when(pullRequestRepository.findById(prId)).thenReturn(Optional.empty());
 
         // Act | Assert
-        DomainException ex = assertThrows(DomainException.class,
+        NotFoundException ex = assertThrows(NotFoundException.class,
                 () -> pullRequestService.mergePullRequest(prId)
         );
 
@@ -269,7 +270,7 @@ class PullRequestServiceTest {
         when(pullRequestRepository.findById(prId)).thenReturn(Optional.empty());
 
         // Act | Assert
-        DomainException ex = assertThrows(DomainException.class,
+        NotFoundException ex = assertThrows(NotFoundException.class,
                 () -> pullRequestService.reassignReviewer(prId, oldReviewerId)
         );
 
@@ -314,7 +315,7 @@ class PullRequestServiceTest {
         when(userRepository.findById(oldReviewerId)).thenReturn(Optional.empty());
 
         // Act | Assert
-        DomainException ex = assertThrows(DomainException.class,
+        NotFoundException ex = assertThrows(NotFoundException.class,
                 () -> pullRequestService.reassignReviewer(prId, oldReviewerId)
         );
 
@@ -368,7 +369,7 @@ class PullRequestServiceTest {
         when(userRepository.findById(oldReviewerId)).thenReturn(Optional.of(oldReviewer));
 
         // Act | Assert
-        DomainException ex = assertThrows(DomainException.class,
+        NotFoundException ex = assertThrows(NotFoundException.class,
                 () -> pullRequestService.reassignReviewer(prId, oldReviewerId)
         );
 
@@ -441,7 +442,7 @@ class PullRequestServiceTest {
         when(userRepository.findById(reviewerId)).thenReturn(Optional.empty());
 
         // Act | Assert
-        DomainException ex = assertThrows(DomainException.class,
+        NotFoundException ex = assertThrows(NotFoundException.class,
                 () -> pullRequestService.getReviewByUserId(reviewerId)
         );
 

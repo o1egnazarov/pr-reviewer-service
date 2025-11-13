@@ -9,6 +9,7 @@ import ru.noleg.prreviewerservice.entity.TeamEntity;
 import ru.noleg.prreviewerservice.entity.UserEntity;
 import ru.noleg.prreviewerservice.exception.DomainException;
 import ru.noleg.prreviewerservice.exception.ErrorCode;
+import ru.noleg.prreviewerservice.exception.NotFoundException;
 import ru.noleg.prreviewerservice.repository.TeamRepository;
 import ru.noleg.prreviewerservice.service.impl.TeamServiceDefaultImpl;
 import ru.noleg.prreviewerservice.utils.UserTestUtil;
@@ -130,7 +131,7 @@ class TeamServiceTest {
         when(teamRepository.findByTitle(title)).thenReturn(Optional.empty());
 
         // Act | Assert
-        DomainException ex = assertThrows(DomainException.class,
+        NotFoundException ex = assertThrows(NotFoundException.class,
                 () -> teamService.getTeam(title)
         );
 

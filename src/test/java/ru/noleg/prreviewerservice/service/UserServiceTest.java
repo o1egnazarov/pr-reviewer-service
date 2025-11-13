@@ -6,8 +6,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.noleg.prreviewerservice.entity.UserEntity;
-import ru.noleg.prreviewerservice.exception.DomainException;
 import ru.noleg.prreviewerservice.exception.ErrorCode;
+import ru.noleg.prreviewerservice.exception.NotFoundException;
 import ru.noleg.prreviewerservice.repository.UserRepository;
 import ru.noleg.prreviewerservice.service.impl.UserServiceDefaultImpl;
 import ru.noleg.prreviewerservice.utils.UserTestUtil;
@@ -57,7 +57,7 @@ class UserServiceTest {
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
         // Act | Assert
-        DomainException ex = assertThrows(DomainException.class,
+        NotFoundException ex = assertThrows(NotFoundException.class,
                 () -> userService.setActive(userId, isActive)
         );
 

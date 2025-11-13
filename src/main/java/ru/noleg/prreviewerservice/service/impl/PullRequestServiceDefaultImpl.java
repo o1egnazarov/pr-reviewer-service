@@ -7,6 +7,7 @@ import ru.noleg.prreviewerservice.entity.PullRequestStatus;
 import ru.noleg.prreviewerservice.entity.UserEntity;
 import ru.noleg.prreviewerservice.exception.DomainException;
 import ru.noleg.prreviewerservice.exception.ErrorCode;
+import ru.noleg.prreviewerservice.exception.NotFoundException;
 import ru.noleg.prreviewerservice.repository.PullRequestRepository;
 import ru.noleg.prreviewerservice.repository.UserRepository;
 import ru.noleg.prreviewerservice.service.PullRequestService;
@@ -49,13 +50,13 @@ public class PullRequestServiceDefaultImpl implements PullRequestService {
             throw new DomainException(ErrorCode.PR_EXISTS, "PR with id " + pullRequestId + " already exists!");
         }
         return userRepository.findById(authorId).orElseThrow(
-                () -> new DomainException(ErrorCode.NOT_FOUND, "Author with id " + authorId + " not found!")
+                () -> new NotFoundException(ErrorCode.NOT_FOUND, "Author with id " + authorId + " not found!")
         );
     }
 
     private Set<UserEntity> findReviewers(UserEntity author) {
         if (author.getTeam() == null) {
-            throw new DomainException(ErrorCode.NOT_FOUND, "Team not found for author with username: " +
+            throw new NotFoundException(ErrorCode.NOT_FOUND, "Team not found for author with username: " +
                     author.getUsername()
             );
         }
@@ -87,7 +88,7 @@ public class PullRequestServiceDefaultImpl implements PullRequestService {
 
     private PullRequestEntity validationAndGetPullRequest(String pullRequestId) {
         PullRequestEntity pullRequestEntity = pullRequestRepository.findById(pullRequestId).orElseThrow(
-                () -> new DomainException(ErrorCode.NOT_FOUND, "PR with id " + pullRequestId + " not found!")
+                () -> new NotFoundException(ErrorCode.NOT_FOUND, "PR with id " + pullRequestId + " not found!")
         );
 
         if (pullRequestEntity.getStatus() == PullRequestStatus.MERGED) {
@@ -98,7 +99,7 @@ public class PullRequestServiceDefaultImpl implements PullRequestService {
 
     private UserEntity validationAndGetOldReviewer(String oldReviewerId, PullRequestEntity pullRequestEntity) {
         UserEntity oldReviewer = userRepository.findById(oldReviewerId).orElseThrow(
-                () -> new DomainException(ErrorCode.NOT_FOUND, "User with id " + oldReviewerId + " not found for author!")
+                () -> new NotFoundException(ErrorCode.NOT_FOUND, "User with id " + oldReviewerId + " not found for author!")
         );
 
         if (!pullRequestEntity.getReviewers().contains(oldReviewer)) {
@@ -110,7 +111,7 @@ public class PullRequestServiceDefaultImpl implements PullRequestService {
     private UserEntity findNewReviewer(PullRequestEntity pullRequestEntity, UserEntity oldReviewer) {
         UserEntity author = pullRequestEntity.getAuthor();
         if (author.getTeam() == null) {
-            throw new DomainException(ErrorCode.NOT_FOUND, "Team not found for author");
+            throw new NotFoundException(ErrorCode.NOT_FOUND, "Team not found for author");
         }
 
         return userRepository.findByTeamAndIsActiveTrue(author.getTeam())
@@ -124,7 +125,7 @@ public class PullRequestServiceDefaultImpl implements PullRequestService {
 
     public PullRequestEntity mergePullRequest(String pullRequestId) {
         PullRequestEntity pullRequestEntity = pullRequestRepository.findById(pullRequestId).orElseThrow(
-                () -> new DomainException(ErrorCode.NOT_FOUND, "PR with id " + pullRequestId + " not found!")
+                () -> new NotFoundException(ErrorCode.NOT_FOUND, "PR with id " + pullRequestId + " not found!")
         );
 
         if (pullRequestEntity.getStatus() == PullRequestStatus.MERGED) {
@@ -140,7 +141,7 @@ public class PullRequestServiceDefaultImpl implements PullRequestService {
     @Transactional(readOnly = true)
     public List<PullRequestEntity> getReviewByUserId(String reviewerId) {
         UserEntity reviewer = userRepository.findById(reviewerId).orElseThrow(
-                () -> new DomainException(ErrorCode.NOT_FOUND, "User with id " + reviewerId + " not found")
+                () -> new NotFoundException(ErrorCode.NOT_FOUND, "User with id " + reviewerId + " not found")
         );
 
         return pullRequestRepository.findByReviewersContains(reviewer);
