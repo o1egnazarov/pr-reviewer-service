@@ -79,8 +79,16 @@ public class PullRequestEntity {
         this.needMoreReviewers = needMoreReviewers;
     }
 
+    public boolean isNeedMoreReviewers() {
+        return needMoreReviewers;
+    }
+
     public void setMergedAt(LocalDateTime mergedAt) {
         this.mergedAt = mergedAt;
+    }
+
+    public LocalDateTime getMergedAt() {
+        return mergedAt;
     }
 
     public String getTitle() {

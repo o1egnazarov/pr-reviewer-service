@@ -88,6 +88,24 @@ class TeamServiceTest {
     }
 
     @Test
+    void createTeam_shouldHandleEmptyMembers() {
+        // Arrange
+        String teamTitle = "Team B";
+        when(teamRepository.existsByTitle(teamTitle)).thenReturn(false);
+        when(teamRepository.save(any(TeamEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        TeamEntity result = teamService.createTeam(teamTitle, Set.of());
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(teamTitle, result.getTitle());
+        assertTrue(result.getMembers().isEmpty());
+        verify(teamRepository).existsByTitle(teamTitle);
+        verify(teamRepository).save(result);
+    }
+
+    @Test
     void getTeam_shouldReturnTeam_whenTeamExists() {
         // Arrange
         String title = "Team A";
