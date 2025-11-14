@@ -3,14 +3,11 @@ package ru.noleg.prreviewerservice.mapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
-import org.openapitools.jackson.nullable.JsonNullable;
 import ru.noleg.api.models.*;
 import ru.noleg.prreviewerservice.entity.PullRequestEntity;
 import ru.noleg.prreviewerservice.entity.PullRequestStatus;
 import ru.noleg.prreviewerservice.entity.UserEntity;
 
-import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
@@ -28,6 +25,12 @@ public interface PullRequestMapper {
     @Mapping(target = "userId", source = "userId")
     @Mapping(target = "pullRequests", source = "pullRequests")
     GetReview200Response toGetReviewResponse(String userId, List<PullRequestEntity> pullRequests);
+
+    default DeactivateUsersByTeam200Response toDeactivateUsersResponse(List<PullRequestEntity> pullRequests) {
+        DeactivateUsersByTeam200Response response = new DeactivateUsersByTeam200Response();
+        response.setPullRequests(toShortList(pullRequests));
+        return response;
+    }
 
     default PullRequestShort.StatusEnum mapStatusShort(PullRequestStatus status) {
         if (status == null) {
@@ -55,8 +58,8 @@ public interface PullRequestMapper {
     @Mapping(target = "authorId", source = "author.id")
     @Mapping(target = "status", expression = "java(mapStatus(entity.getStatus()))")
     @Mapping(target = "assignedReviewers", expression = "java(mapReviewers(entity.getReviewers()))")
-    @Mapping(target = "createdAt", expression = "java(toJsonNullable(java.sql.Timestamp.valueOf(entity.getId() != null ? java.time.LocalDateTime.now() : null)))")
-    @Mapping(target = "mergedAt", expression = "java(toJsonNullable(entity.getMergedAt() != null ? java.sql.Timestamp.valueOf(entity.getMergedAt()) : null))")
+    @Mapping(target = "createdAt", source = "createdAt")
+    @Mapping(target = "mergedAt", source = "mergedAt")
     PullRequest toPullRequest(PullRequestEntity entity);
 
     default List<String> mapReviewers(Set<UserEntity> reviewers) {
@@ -64,14 +67,6 @@ public interface PullRequestMapper {
         return reviewers.stream()
                 .map(UserEntity::getId)
                 .toList();
-    }
-
-    default JsonNullable<Date> toJsonNullable(Object value) {
-        return switch (value) {
-            case Date date -> JsonNullable.of(date);
-            case LocalDateTime ldt -> JsonNullable.of(java.sql.Timestamp.valueOf(ldt));
-            case null, default -> JsonNullable.undefined();
-        };
     }
 
     default PullRequest.StatusEnum mapStatus(PullRequestStatus status) {

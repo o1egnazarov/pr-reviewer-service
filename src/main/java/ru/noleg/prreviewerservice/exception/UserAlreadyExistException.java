@@ -1,9 +1,9 @@
 package ru.noleg.prreviewerservice.exception;
 
-public class DomainException extends RuntimeException {
+public class UserAlreadyExistException extends RuntimeException {
     private final ErrorCode code;
 
-    public DomainException(ErrorCode code, String message) {
+    public UserAlreadyExistException(ErrorCode code, String message) {
         super(message);
         this.code = code;
     }

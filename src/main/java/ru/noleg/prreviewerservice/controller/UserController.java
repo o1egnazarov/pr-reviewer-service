@@ -20,23 +20,20 @@ import java.util.List;
 public class UserController implements UsersApi {
 
     private final UserService userService;
-    private final PullRequestService pullRequestService;
     private final UserMapper userMapper;
     private final PullRequestMapper pullRequestMapper;
 
     public UserController(UserService userService,
-                          PullRequestService pullRequestService,
                           UserMapper userMapper,
                           PullRequestMapper pullRequestMapper) {
         this.userService = userService;
-        this.pullRequestService = pullRequestService;
         this.userMapper = userMapper;
         this.pullRequestMapper = pullRequestMapper;
     }
 
     @Override
     public ResponseEntity<GetReview200Response> getReview(String userId) {
-        List<PullRequestEntity> pullRequestsByUserId = pullRequestService.getReviewByUserId(userId);
+        List<PullRequestEntity> pullRequestsByUserId = userService.getReviewByUserId(userId);
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(pullRequestMapper.toGetReviewResponse(userId, pullRequestsByUserId));

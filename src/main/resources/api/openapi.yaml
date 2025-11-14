@@ -7,6 +7,7 @@ tags:
   - name: Teams
   - name: Users
   - name: PullRequests
+  - name: TeamManagements
   - name: Health
 
 components:
@@ -52,6 +53,8 @@ components:
                 - NOT_ASSIGNED
                 - NO_CANDIDATE
                 - NOT_FOUND
+                - USER_EXISTS
+                - UNKNOWN_ERROR
             message:
               type: string
       example:
@@ -212,7 +215,47 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
-
+  /teamManagements/deactivate:
+    post:
+      operationId: deactivateUsersByTeam
+      tags: [ TeamManagements ]
+      summary: Деактивировать всех пользователей команды и переназначить их PR
+      security:
+        - AdminToken: [ ]
+      parameters:
+        - $ref: '#/components/parameters/TeamNameQuery'
+      responses:
+        '200':
+          description: Пользователи деактивированы и PR переназначены
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ pull_requests ]
+                properties:
+                  pull_requests:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PullRequestShort'
+              example:
+                pull_requests:
+                  - pull_request_id: pr-1001
+                    pull_request_name: Add search
+                    author_id: u1
+                    status: OPEN
+                  - pull_request_id: pr-1002
+                    pull_request_name: Fix bug
+                    author_id: u3
+                    status: OPEN
+        '404':
+          description: Команда не найдена
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example:
+                error:
+                  code: NOT_FOUND
+                  message: Team not found
   /users/setIsActive:
     post:
       operationId: setIsActive

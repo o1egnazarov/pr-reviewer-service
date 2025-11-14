@@ -7,8 +7,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import ru.noleg.api.models.ErrorResponse;
 import ru.noleg.api.models.ErrorResponseError;
-import ru.noleg.prreviewerservice.exception.DomainException;
-import ru.noleg.prreviewerservice.exception.NotFoundException;
+import ru.noleg.prreviewerservice.exception.*;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -23,13 +22,75 @@ public class GlobalExceptionHandler {
                 );
     }
 
-    @ExceptionHandler(DomainException.class)
-    public ResponseEntity<ErrorResponse> handleDomainException(DomainException ex) {
+    @ExceptionHandler(TeamAlreadyExistException.class)
+    public ResponseEntity<ErrorResponse> handleTeamExistsException(TeamAlreadyExistException ex) {
         return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
+                .status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse(
-                                new ErrorResponseError(ErrorResponseError.CodeEnum.NOT_FOUND, ex.getMessage())
+                                new ErrorResponseError(ErrorResponseError.CodeEnum.TEAM_EXISTS, ex.getMessage())
+                        )
+                );
+    }
+
+    @ExceptionHandler(PrAlreadyExistException.class)
+    public ResponseEntity<ErrorResponse> handlePrExistsException(PrAlreadyExistException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(
+                                new ErrorResponseError(ErrorResponseError.CodeEnum.PR_EXISTS, ex.getMessage())
+                        )
+                );
+    }
+
+    @ExceptionHandler(PrMergedException.class)
+    public ResponseEntity<ErrorResponse> handlePrMergedException(PrMergedException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(
+                                new ErrorResponseError(ErrorResponseError.CodeEnum.PR_MERGED, ex.getMessage())
+                        )
+                );
+    }
+
+    @ExceptionHandler(NoSuitableCandidatesException.class)
+    public ResponseEntity<ErrorResponse> handleNoSuitableCandidatesException(NoSuitableCandidatesException ex) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(
+                                new ErrorResponseError(ErrorResponseError.CodeEnum.NO_CANDIDATE, ex.getMessage())
+                        )
+                );
+    }
+
+    @ExceptionHandler(NoAssignedForPrException.class)
+    public ResponseEntity<ErrorResponse> handleNotAssignedForPrException(NoAssignedForPrException ex) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(
+                                new ErrorResponseError(ErrorResponseError.CodeEnum.NOT_ASSIGNED, ex.getMessage())
+                        )
+                );
+    }
+
+    @ExceptionHandler(UserAlreadyExistException.class)
+    public ResponseEntity<ErrorResponse> handleUserExistsException(UserAlreadyExistException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(
+                                new ErrorResponseError(ErrorResponseError.CodeEnum.USER_EXISTS, ex.getMessage())
+                        )
+                );
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleCommonException(Exception ex) {
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse(
+                                new ErrorResponseError(ErrorResponseError.CodeEnum.UNKNOWN_ERROR,
+                                        ex.getMessage())
                         )
                 );
     }
 }
+//"Unexpected error, please try again later"

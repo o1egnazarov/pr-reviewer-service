@@ -1,10 +1,11 @@
-package ru.noleg.prreviewerservice.service;
+package ru.noleg.prreviewerservice.service.unit;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ru.noleg.prreviewerservice.entity.PullRequestEntity;
 import ru.noleg.prreviewerservice.entity.UserEntity;
 import ru.noleg.prreviewerservice.exception.ErrorCode;
 import ru.noleg.prreviewerservice.exception.NotFoundException;
@@ -12,6 +13,7 @@ import ru.noleg.prreviewerservice.repository.UserRepository;
 import ru.noleg.prreviewerservice.service.impl.UserServiceDefaultImpl;
 import ru.noleg.prreviewerservice.utils.UserTestUtil;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -64,5 +66,43 @@ class UserServiceTest {
         assertEquals(ErrorCode.NOT_FOUND, ex.getErrorCode());
         verify(userRepository).findById(userId);
         verify(userRepository, never()).save(any(UserEntity.class));
+    }
+
+    @Test
+    void getReviewByUserId_ShouldReturnReviews_WhenUserExists() {
+        // Arrange
+        String reviewerId = "r1";
+        UserEntity reviewer = new UserEntity();
+        reviewer.setId(reviewerId);
+
+        PullRequestEntity pr1 = new PullRequestEntity();
+        PullRequestEntity pr2 = new PullRequestEntity();
+
+        reviewer.setReviewingPullRequestEntities(List.of(pr1, pr2));
+
+        when(userRepository.findWithReviewerPullRequestsById(reviewerId)).thenReturn(Optional.of(reviewer));
+
+        // Act
+        List<PullRequestEntity> result = userService.getReviewByUserId(reviewerId);
+
+        // Assert
+        assertEquals(2, result.size());
+    }
+
+    @Test
+    void getReviewByUserId_ShouldThrownException_WhenUserNotExists() {
+        // Arrange
+        String reviewerId = "r1-notfound";
+        UserEntity reviewer = new UserEntity();
+        reviewer.setId(reviewerId);
+
+        when(userRepository.findWithReviewerPullRequestsById(reviewerId)).thenReturn(Optional.empty());
+
+        // Act | Assert
+        NotFoundException ex = assertThrows(NotFoundException.class,
+                () -> userService.getReviewByUserId(reviewerId)
+        );
+
+        assertEquals(ErrorCode.NOT_FOUND, ex.getErrorCode());
     }
 }

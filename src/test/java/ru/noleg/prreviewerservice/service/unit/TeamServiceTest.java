@@ -1,4 +1,4 @@
-package ru.noleg.prreviewerservice.service;
+package ru.noleg.prreviewerservice.service.unit;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -7,10 +7,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.noleg.prreviewerservice.entity.TeamEntity;
 import ru.noleg.prreviewerservice.entity.UserEntity;
-import ru.noleg.prreviewerservice.exception.DomainException;
 import ru.noleg.prreviewerservice.exception.ErrorCode;
 import ru.noleg.prreviewerservice.exception.NotFoundException;
+import ru.noleg.prreviewerservice.exception.TeamAlreadyExistException;
+import ru.noleg.prreviewerservice.exception.UserAlreadyExistException;
 import ru.noleg.prreviewerservice.repository.TeamRepository;
+import ru.noleg.prreviewerservice.repository.UserRepository;
 import ru.noleg.prreviewerservice.service.impl.TeamServiceDefaultImpl;
 import ru.noleg.prreviewerservice.utils.UserTestUtil;
 
@@ -27,6 +29,9 @@ class TeamServiceTest {
     @Mock
     private TeamRepository teamRepository;
 
+    @Mock
+    private UserRepository userRepository;
+
     @InjectMocks
     private TeamServiceDefaultImpl teamService;
 
@@ -41,6 +46,9 @@ class TeamServiceTest {
         );
 
         when(teamRepository.existsByTitle(teamTitle)).thenReturn(false);
+        when(userRepository.existsById("u1")).thenReturn(false);
+        when(userRepository.existsById("u2")).thenReturn(false);
+        when(userRepository.existsById("u3")).thenReturn(false);
         when(teamRepository.save(any(TeamEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
@@ -61,7 +69,7 @@ class TeamServiceTest {
         when(teamRepository.existsByTitle(teamTitle)).thenReturn(true);
 
         // Act | Assert
-        DomainException ex = assertThrows(DomainException.class,
+        TeamAlreadyExistException ex = assertThrows(TeamAlreadyExistException.class,
                 () -> teamService.createTeam(teamTitle, Collections.emptySet())
         );
 
@@ -104,6 +112,26 @@ class TeamServiceTest {
         assertTrue(result.getMembers().isEmpty());
         verify(teamRepository).existsByTitle(teamTitle);
         verify(teamRepository).save(result);
+    }
+
+    @Test
+    void createTeam_shouldThrownException_whenUserAlreadyInTeam() {
+        // Arrange
+        String teamTitle = "Team A";
+        Set<UserEntity> members = Set.of(
+                UserTestUtil.createUser("u1", "user1", true)
+        );
+
+        when(teamRepository.existsByTitle(teamTitle)).thenReturn(false);
+        when(userRepository.existsById("u1")).thenReturn(true);
+
+        // Act | Assert
+        UserAlreadyExistException ex = assertThrows(UserAlreadyExistException.class,
+                () -> teamService.createTeam(teamTitle, members)
+        );
+
+        assertEquals(ErrorCode.USER_EXISTS, ex.getErrorCode());
+        verify(teamRepository, never()).save(any(TeamEntity.class));
     }
 
     @Test

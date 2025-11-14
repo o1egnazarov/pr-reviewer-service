@@ -5,9 +5,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.noleg.prreviewerservice.entity.PullRequestEntity;
 import ru.noleg.prreviewerservice.entity.PullRequestStatus;
 import ru.noleg.prreviewerservice.entity.UserEntity;
-import ru.noleg.prreviewerservice.exception.DomainException;
-import ru.noleg.prreviewerservice.exception.ErrorCode;
-import ru.noleg.prreviewerservice.exception.NotFoundException;
+import ru.noleg.prreviewerservice.exception.*;
 import ru.noleg.prreviewerservice.repository.PullRequestRepository;
 import ru.noleg.prreviewerservice.repository.UserRepository;
 import ru.noleg.prreviewerservice.service.PullRequestService;
@@ -31,8 +29,10 @@ public class PullRequestServiceDefaultImpl implements PullRequestService {
         this.userRepository = userRepository;
     }
 
+    @Override
     public PullRequestEntity createPullRequest(String prId, String title, String authorId) {
-        UserEntity author = this.validationAndGetAuthor(prId, authorId);
+        this.validatePr(prId);
+        UserEntity author = this.validateAndGetAuthor(authorId);
         Set<UserEntity> reviewers = this.findReviewers(author);
 
         PullRequestEntity pullRequestEntity = new PullRequestEntity();
@@ -45,22 +45,27 @@ public class PullRequestServiceDefaultImpl implements PullRequestService {
         return pullRequestRepository.save(pullRequestEntity);
     }
 
-    private UserEntity validationAndGetAuthor(String pullRequestId, String authorId) {
+    private void validatePr(String pullRequestId) {
         if (pullRequestRepository.existsById(pullRequestId)) {
-            throw new DomainException(ErrorCode.PR_EXISTS, "PR with id " + pullRequestId + " already exists!");
+            throw new PrAlreadyExistException(ErrorCode.PR_EXISTS, "PR with id " + pullRequestId + " already exists!");
         }
-        return userRepository.findById(authorId).orElseThrow(
+    }
+
+    private UserEntity validateAndGetAuthor(String authorId) {
+        UserEntity author = userRepository.findById(authorId).orElseThrow(
                 () -> new NotFoundException(ErrorCode.NOT_FOUND, "Author with id " + authorId + " not found!")
         );
+
+        if (!author.isActive()) {
+            throw new NoSuitableCandidatesException(ErrorCode.NO_CANDIDATE,
+                    "Author with id " + authorId + " is not active!"
+            );
+        }
+        this.validateTeamByAuthor(author);
+        return author;
     }
 
     private Set<UserEntity> findReviewers(UserEntity author) {
-        if (author.getTeam() == null) {
-            throw new NotFoundException(ErrorCode.NOT_FOUND, "Team not found for author with username: " +
-                    author.getUsername()
-            );
-        }
-
         List<UserEntity> candidates = userRepository.findByTeamAndIsActiveTrue(author.getTeam())
                 .stream()
                 .filter(u -> !u.equals(author))
@@ -72,9 +77,10 @@ public class PullRequestServiceDefaultImpl implements PullRequestService {
                 .collect(Collectors.toSet());
     }
 
+    @Override
     public PullRequestEntity reassignReviewer(String pullRequestId, String oldReviewerId) {
-        PullRequestEntity pullRequestEntity = this.validationAndGetPullRequest(pullRequestId);
-        UserEntity oldReviewer = this.validationAndGetOldReviewer(oldReviewerId, pullRequestEntity);
+        PullRequestEntity pullRequestEntity = this.validateAndGetPullRequest(pullRequestId);
+        UserEntity oldReviewer = this.validateAndGetOldReviewer(oldReviewerId, pullRequestEntity);
 
         UserEntity newReviewer = this.findNewReviewer(pullRequestEntity, oldReviewer);
 
@@ -86,47 +92,53 @@ public class PullRequestServiceDefaultImpl implements PullRequestService {
         return pullRequestRepository.save(pullRequestEntity);
     }
 
-    private PullRequestEntity validationAndGetPullRequest(String pullRequestId) {
-        PullRequestEntity pullRequestEntity = pullRequestRepository.findById(pullRequestId).orElseThrow(
-                () -> new NotFoundException(ErrorCode.NOT_FOUND, "PR with id " + pullRequestId + " not found!")
-        );
+    private PullRequestEntity validateAndGetPullRequest(String pullRequestId) {
+        PullRequestEntity pullRequestEntity = this.getPullRequest(pullRequestId);
 
         if (pullRequestEntity.getStatus() == PullRequestStatus.MERGED) {
-            throw new DomainException(ErrorCode.PR_MERGED, "Cannot reassign on merged PR!");
+            throw new PrMergedException(ErrorCode.PR_MERGED, "Cannot reassign on merged PR!");
         }
         return pullRequestEntity;
     }
 
-    private UserEntity validationAndGetOldReviewer(String oldReviewerId, PullRequestEntity pullRequestEntity) {
+    private UserEntity validateAndGetOldReviewer(String oldReviewerId, PullRequestEntity pullRequestEntity) {
         UserEntity oldReviewer = userRepository.findById(oldReviewerId).orElseThrow(
                 () -> new NotFoundException(ErrorCode.NOT_FOUND, "User with id " + oldReviewerId + " not found for author!")
         );
 
         if (!pullRequestEntity.getReviewers().contains(oldReviewer)) {
-            throw new DomainException(ErrorCode.NOT_ASSIGNED, "Reviewer is not assigned to this PR!");
+            throw new NoAssignedForPrException(ErrorCode.NOT_ASSIGNED, "Reviewer is not assigned to this PR!");
         }
         return oldReviewer;
     }
 
     private UserEntity findNewReviewer(PullRequestEntity pullRequestEntity, UserEntity oldReviewer) {
         UserEntity author = pullRequestEntity.getAuthor();
-        if (author.getTeam() == null) {
-            throw new NotFoundException(ErrorCode.NOT_FOUND, "Team not found for author");
-        }
+
+        this.validateTeamByAuthor(author);
 
         return userRepository.findByTeamAndIsActiveTrue(author.getTeam())
                 .stream()
                 .filter(u -> !u.equals(author) && !u.equals(oldReviewer))
                 .findFirst()
                 .orElseThrow(
-                        () -> new DomainException(ErrorCode.NO_CANDIDATE, "No active replacement candidate in team!")
+                        () -> new NoSuitableCandidatesException(ErrorCode.NO_CANDIDATE,
+                                "No active replacement candidate in team!"
+                        )
                 );
     }
 
+    private void validateTeamByAuthor(UserEntity author) {
+        if (author.getTeam() == null) {
+            throw new NotFoundException(ErrorCode.NOT_FOUND, "Team not found for author with username: " +
+                    author.getUsername()
+            );
+        }
+    }
+
+    @Override
     public PullRequestEntity mergePullRequest(String pullRequestId) {
-        PullRequestEntity pullRequestEntity = pullRequestRepository.findById(pullRequestId).orElseThrow(
-                () -> new NotFoundException(ErrorCode.NOT_FOUND, "PR with id " + pullRequestId + " not found!")
-        );
+        PullRequestEntity pullRequestEntity = this.getPullRequest(pullRequestId);
 
         if (pullRequestEntity.getStatus() == PullRequestStatus.MERGED) {
             return pullRequestEntity;
@@ -138,12 +150,9 @@ public class PullRequestServiceDefaultImpl implements PullRequestService {
         return pullRequestRepository.save(pullRequestEntity);
     }
 
-    @Transactional(readOnly = true)
-    public List<PullRequestEntity> getReviewByUserId(String reviewerId) {
-        UserEntity reviewer = userRepository.findById(reviewerId).orElseThrow(
-                () -> new NotFoundException(ErrorCode.NOT_FOUND, "User with id " + reviewerId + " not found")
+    private PullRequestEntity getPullRequest(String pullRequestId) {
+        return pullRequestRepository.findWithReviewersById(pullRequestId).orElseThrow(
+                () -> new NotFoundException(ErrorCode.NOT_FOUND, "PR with id " + pullRequestId + " not found!")
         );
-
-        return pullRequestRepository.findByReviewersContains(reviewer);
     }
 }

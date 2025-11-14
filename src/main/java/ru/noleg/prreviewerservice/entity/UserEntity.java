@@ -2,9 +2,7 @@ package ru.noleg.prreviewerservice.entity;
 
 import jakarta.persistence.*;
 
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 @Entity
 @Table(name = "users")
@@ -25,10 +23,10 @@ public class UserEntity {
     private TeamEntity team;
 
     @OneToMany(mappedBy = "author")
-    private Set<PullRequestEntity> authoredPullRequestEntities = new HashSet<>();
+    private List<PullRequestEntity> authoredPullRequestEntities = new ArrayList<>();
 
     @ManyToMany(mappedBy = "reviewers")
-    private Set<PullRequestEntity> reviewingPullRequestEntities = new HashSet<>();
+    private List<PullRequestEntity> reviewingPullRequestEntities = new ArrayList<>();
 
     public String getId() {
         return id;
@@ -62,6 +60,14 @@ public class UserEntity {
         this.team = teamEntity;
     }
 
+    public List<PullRequestEntity> getReviewingPullRequestEntities() {
+        return reviewingPullRequestEntities;
+    }
+
+    public void setReviewingPullRequestEntities(List<PullRequestEntity> reviewingPullRequestEntities) {
+        this.reviewingPullRequestEntities = reviewingPullRequestEntities;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
@@ -74,5 +80,14 @@ public class UserEntity {
     @Override
     public int hashCode() {
         return Objects.hash(id, username, isActive);
+    }
+
+    @Override
+    public String toString() {
+        return "UserEntity{" +
+                "id='" + id + '\'' +
+                ", username='" + username + '\'' +
+                ", isActive=" + isActive +
+                '}';
     }
 }

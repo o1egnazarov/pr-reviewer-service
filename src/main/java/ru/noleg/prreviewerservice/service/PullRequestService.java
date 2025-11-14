@@ -10,6 +10,4 @@ public interface PullRequestService {
     PullRequestEntity reassignReviewer(String pullRequestId, String oldReviewerId);
 
     PullRequestEntity mergePullRequest(String pullRequestId);
-
-    List<PullRequestEntity> getReviewByUserId(String reviewerId);
 }

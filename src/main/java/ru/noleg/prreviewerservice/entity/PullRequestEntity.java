@@ -39,6 +39,9 @@ public class PullRequestEntity {
     @Column(name = "merged_at")
     private LocalDateTime mergedAt;
 
+    @Column(name = "created_at")
+    private LocalDateTime createdAt = LocalDateTime.now();
+
     public String getId() {
         return id;
     }
@@ -91,6 +94,14 @@ public class PullRequestEntity {
         return mergedAt;
     }
 
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
     public String getTitle() {
         return title;
     }
@@ -103,11 +114,21 @@ public class PullRequestEntity {
                 Objects.equals(id, that.id) &&
                 Objects.equals(title, that.title) &&
                 status == that.status &&
-                Objects.equals(mergedAt, that.mergedAt);
+                Objects.equals(mergedAt, that.mergedAt) &&
+                Objects.equals(createdAt, that.createdAt);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, title, status, needMoreReviewers, mergedAt);
+        return Objects.hash(id, title, status, needMoreReviewers, mergedAt, createdAt);
+    }
+
+    @Override
+    public String toString() {
+        return "PullRequestEntity{" +
+                "id='" + id + '\'' +
+                ", title='" + title + '\'' +
+                ", status=" + status +
+                '}';
     }
 }
