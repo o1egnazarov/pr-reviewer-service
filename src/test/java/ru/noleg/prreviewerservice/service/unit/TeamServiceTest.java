@@ -47,9 +47,7 @@ class TeamServiceTest {
             UserTestUtil.createUser("u3", "user2", false));
 
     when(teamRepository.existsByTitle(teamTitle)).thenReturn(false);
-    when(userRepository.existsById("u1")).thenReturn(false);
-    when(userRepository.existsById("u2")).thenReturn(false);
-    when(userRepository.existsById("u3")).thenReturn(false);
+    when(userRepository.findExistingIds(Set.of("u1", "u2", "u3"))).thenReturn(Set.of());
     when(teamRepository.save(any(TeamEntity.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -126,7 +124,7 @@ class TeamServiceTest {
     Set<UserEntity> members = Set.of(UserTestUtil.createUser("u1", "user1", true));
 
     when(teamRepository.existsByTitle(teamTitle)).thenReturn(false);
-    when(userRepository.existsById("u1")).thenReturn(true);
+    when(userRepository.findExistingIds(Set.of("u1"))).thenReturn(Set.of("u1"));
 
     // Act | Assert
     UserAlreadyExistException ex =

@@ -1,13 +1,32 @@
 services:
-  db:
-    image: postgres:16
-    container_name: pr_reviewer_db_container
-    environment:
-      POSTGRES_USER: noleg
-      POSTGRES_PASSWORD: root
-      POSTGRES_DB: pr_reviewer_db
+  app:
+    container_name: prreviewer_service
+    image: prreviewer-service:latest
     ports:
-      - "5432:5432"
+      - "${BACKEND_PORT}:8080"
+    environment:
+      SPRING_DATASOURCE_URL: ${DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DATASOURCE_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    container_name: pr_reviewer_db_postgres
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: ${DATASOURCE_USERNAME}
+      POSTGRES_PASSWORD: ${DATASOURCE_PASSWORD}
+      POSTGRES_DB: ${DATASOURCE_NAME}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "psql -U ${DATASOURCE_USERNAME} -d ${DATASOURCE_NAME} -c 'SELECT 1'" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     volumes:
       - postgres_data:/var/lib/postgresql/data
 

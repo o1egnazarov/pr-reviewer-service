@@ -1,16 +1,11 @@
-server:
-  port: 8080
-
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/pr_reviewer_db
-    username: noleg
-    password: root
+    url: ${DATASOURCE_URL}
+    username: ${DATASOURCE_USERNAME}
+    password: ${DATASOURCE_PASSWORD}
   jpa:
-    show-sql: true
     hibernate:
       ddl-auto: update
-    properties:
-      hibernate:
-        format_sql: true
     open-in-view: false
+  config:
+    import: optional:file:.env[.properties]

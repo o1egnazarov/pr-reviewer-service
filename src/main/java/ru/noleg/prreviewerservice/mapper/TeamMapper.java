@@ -18,6 +18,7 @@ public interface TeamMapper {
   @Mapping(target = "username", source = "username")
   @Mapping(target = "active", source = "isActive")
   @Mapping(target = "team", ignore = true)
+  @Mapping(target = "reviewingPullRequestEntities", ignore = true)
   UserEntity toUserEntity(TeamMember member);
 
   Set<UserEntity> toUserEntitySet(List<TeamMember> members);
