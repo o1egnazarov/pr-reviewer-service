@@ -9,14 +9,14 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class SwaggerConfiguration {
 
-    @Bean
-    public OpenAPI customOpenAPI() {
-        return new OpenAPI().info(new Info()
+  @Bean
+  public OpenAPI customOpenApi() {
+    return new OpenAPI()
+        .info(
+            new Info()
                 .title("PR Reviewer Assignment Service")
                 .description("My implementation of a service for assigning PR")
                 .version("1.0")
-                .contact(new Contact()
-                        .name("Oleg Nazarov")
-                        .email("noleg867@gmail.com")));
-    }
+                .contact(new Contact().name("Oleg Nazarov").email("noleg867@gmail.com")));
+  }
 }

@@ -1,5 +1,20 @@
 package ru.noleg.prreviewerservice.service.unit;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -9,423 +24,432 @@ import ru.noleg.prreviewerservice.entity.PullRequestEntity;
 import ru.noleg.prreviewerservice.entity.PullRequestStatus;
 import ru.noleg.prreviewerservice.entity.TeamEntity;
 import ru.noleg.prreviewerservice.entity.UserEntity;
-import ru.noleg.prreviewerservice.exception.*;
+import ru.noleg.prreviewerservice.exception.ErrorCode;
+import ru.noleg.prreviewerservice.exception.NoAssignedForPrException;
+import ru.noleg.prreviewerservice.exception.NoSuitableCandidatesException;
+import ru.noleg.prreviewerservice.exception.NotFoundException;
+import ru.noleg.prreviewerservice.exception.PrAlreadyExistException;
+import ru.noleg.prreviewerservice.exception.PrMergedException;
 import ru.noleg.prreviewerservice.repository.PullRequestRepository;
 import ru.noleg.prreviewerservice.repository.UserRepository;
 import ru.noleg.prreviewerservice.service.impl.PullRequestServiceDefaultImpl;
 import ru.noleg.prreviewerservice.utils.UserTestUtil;
 
-import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-
-
 @ExtendWith(MockitoExtension.class)
 class PullRequestServiceTest {
-    @Mock
-    private PullRequestRepository pullRequestRepository;
-
-    @Mock
-    private UserRepository userRepository;
-
-    @InjectMocks
-    private PullRequestServiceDefaultImpl pullRequestService;
-
-    @Test
-    void createPullRequest_ShouldCreatePR_WhenValidInput() {
-        // Arrange
-        String prId = "PR-1";
-        String title = "Test PR";
-        String authorId = "user-1";
-
-        TeamEntity team = new TeamEntity();
-
-        UserEntity author = UserTestUtil.createUser(authorId, "author", true);
-        author.setTeam(team);
-
-        UserEntity reviewer1 = UserTestUtil.createUser("r1", "rev1", true);
-        reviewer1.setTeam(team);
-
-        UserEntity reviewer2 = UserTestUtil.createUser("r2", "rev2", true);
-        reviewer2.setTeam(team);
-
-
-        when(pullRequestRepository.existsById(prId)).thenReturn(false);
-        when(userRepository.findById(authorId)).thenReturn(Optional.of(author));
-        when(userRepository.findByTeamAndIsActiveTrue(team)).thenReturn(List.of(author, reviewer1, reviewer2));
-        when(pullRequestRepository.save(any(PullRequestEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        // Act
-        PullRequestEntity result = pullRequestService.createPullRequest(prId, title, authorId);
-
-        // Assert
-        assertEquals(prId, result.getId());
-        assertEquals(title, result.getTitle());
-        assertEquals(author, result.getAuthor());
-        assertEquals(2, result.getReviewers().size());
-        assertFalse(result.isNeedMoreReviewers());
-        verify(pullRequestRepository).save(any(PullRequestEntity.class));
-    }
-
-    @Test
-    void createPullRequest_ShouldCreatePR_WhenNotEnoughReviewers() {
-        // Arrange
-        String prId = "PR-1";
-        String title = "Test PR";
-        String authorId = "user-1";
-
-        TeamEntity team = new TeamEntity();
-
-        UserEntity author = UserTestUtil.createUser(authorId, "author", true);
-        author.setTeam(team);
-
-        UserEntity reviewer1 = UserTestUtil.createUser("r1", "rev1", true);
-        reviewer1.setTeam(team);
-
-
-        when(pullRequestRepository.existsById(prId)).thenReturn(false);
-        when(userRepository.findById(authorId)).thenReturn(Optional.of(author));
-        when(userRepository.findByTeamAndIsActiveTrue(team)).thenReturn(List.of(author, reviewer1));
-        when(pullRequestRepository.save(any(PullRequestEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        // Act
-        PullRequestEntity result = pullRequestService.createPullRequest(prId, title, authorId);
-
-        // Assert
-        assertEquals(prId, result.getId());
-        assertEquals(title, result.getTitle());
-        assertEquals(author, result.getAuthor());
-        assertEquals(1, result.getReviewers().size());
-        assertTrue(result.isNeedMoreReviewers());
-        verify(pullRequestRepository).save(any(PullRequestEntity.class));
-    }
-
-    @Test
-    void createPullRequest_ShouldThrownException_WhenPrAlreadyExist() {
-        // Arrange
-        String prId = "PR-1-exist";
-        String title = "Test PR";
-        String authorId = "user-1";
-
-        when(pullRequestRepository.existsById(prId)).thenReturn(true);
-
-        // Act | Assert
-        PrAlreadyExistException ex = assertThrows(PrAlreadyExistException.class,
-                () -> pullRequestService.createPullRequest(prId, title, authorId)
-        );
-
-        assertEquals(ErrorCode.PR_EXISTS, ex.getErrorCode());
-        verify(pullRequestRepository, never()).save(any(PullRequestEntity.class));
-    }
-
-    @Test
-    void createPullRequest_ShouldThrownException_WhenAuthorNotFound() {
-        // Arrange
-        String prId = "PR-1";
-        String title = "Test PR";
-        String authorId = "user-1";
-
-        when(pullRequestRepository.existsById(prId)).thenReturn(false);
-        when(userRepository.findById(authorId)).thenReturn(Optional.empty());
-
-        // Act | Assert
-        NotFoundException ex = assertThrows(NotFoundException.class,
-                () -> pullRequestService.createPullRequest(prId, title, authorId)
-        );
-
-        assertEquals(ErrorCode.NOT_FOUND, ex.getErrorCode());
-        verify(pullRequestRepository, never()).save(any(PullRequestEntity.class));
-    }
-
-    @Test
-    void createPullRequest_ShouldThrownException_WhenAuthorIsNotActive() {
-        // Arrange
-        String prId = "PR-1";
-        String title = "Test PR";
-        String authorId = "user-1";
-
-        UserEntity author = UserTestUtil.createUser(authorId, "author", false);
-
-        when(pullRequestRepository.existsById(prId)).thenReturn(false);
-        when(userRepository.findById(authorId)).thenReturn(Optional.of(author));
-
-        // Act | Assert
-        NoSuitableCandidatesException ex = assertThrows(NoSuitableCandidatesException.class,
-                () -> pullRequestService.createPullRequest(prId, title, authorId)
-        );
-
-        assertEquals(ErrorCode.NO_CANDIDATE, ex.getErrorCode());
-        verify(pullRequestRepository, never()).save(any(PullRequestEntity.class));
-    }
-
-    @Test
-    void createPullRequest_ShouldThrownException_WhenAuthorDoesntHaveTeam() {
-        // Arrange
-        String prId = "PR-1";
-        String title = "Test PR";
-        String authorId = "user-1";
-
-        UserEntity author = UserTestUtil.createUser(authorId, "author", true);
-        author.setTeam(null);
-
-
-        when(pullRequestRepository.existsById(prId)).thenReturn(false);
-        when(userRepository.findById(authorId)).thenReturn(Optional.of(author));
-
-        // Act | Assert
-        NotFoundException ex = assertThrows(NotFoundException.class,
-                () -> pullRequestService.createPullRequest(prId, title, authorId)
-        );
-
-        assertEquals(ErrorCode.NOT_FOUND, ex.getErrorCode());
-        verify(pullRequestRepository, never()).save(any(PullRequestEntity.class));
-    }
-
-    @Test
-    void mergePullRequest_ShouldSetMergedStatus_WhenNotMergedYet() {
-        // Arrange
-        String prId = "PR-1";
-        PullRequestEntity pr = new PullRequestEntity();
-        pr.setId(prId);
-        pr.setStatus(PullRequestStatus.OPEN);
-
-        when(pullRequestRepository.findWithReviewersById(prId)).thenReturn(Optional.of(pr));
-        when(pullRequestRepository.save(any(PullRequestEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        // Act
-        PullRequestEntity result = pullRequestService.mergePullRequest(prId);
-
-        // Assert
-        assertEquals(PullRequestStatus.MERGED, result.getStatus());
-        assertNotNull(result.getMergedAt());
-        verify(pullRequestRepository).save(any(PullRequestEntity.class));
-    }
-
-    @Test
-    void mergePullRequest_ShouldThrownException_WhenPrNotFound() {
-        // Arrange
-        String prId = "PR-1-not-found";
-
-        when(pullRequestRepository.findWithReviewersById(prId)).thenReturn(Optional.empty());
-
-        // Act | Assert
-        NotFoundException ex = assertThrows(NotFoundException.class,
-                () -> pullRequestService.mergePullRequest(prId)
-        );
-
-        assertEquals(ErrorCode.NOT_FOUND, ex.getErrorCode());
-        verify(pullRequestRepository, never()).save(any(PullRequestEntity.class));
-    }
-
-    @Test
-    void mergePullRequest_ShouldNothingWillHappen_WhenSetStatusFromMergedToMerged() {
-        // Arrange
-        String prId = "PR-1";
-        PullRequestEntity pr = new PullRequestEntity();
-        pr.setId(prId);
-        pr.setStatus(PullRequestStatus.MERGED);
-        LocalDateTime mergedAt = LocalDateTime.of(2004, 8, 8, 8, 0);
-        pr.setMergedAt(mergedAt);
-
-        when(pullRequestRepository.findWithReviewersById(prId)).thenReturn(Optional.of(pr));
-
-        // Act
-        PullRequestEntity result = pullRequestService.mergePullRequest(prId);
-
-        // Assert
-        assertEquals(PullRequestStatus.MERGED, result.getStatus());
-        assertEquals(mergedAt, result.getMergedAt());
-        verify(pullRequestRepository, never()).save(any(PullRequestEntity.class));
-    }
-
-    @Test
-    void reassignReviewer_ShouldReplaceReviewer_WhenValid() {
-        // Arrange
-        String prId = "PR-1";
-        String oldReviewerId = "r1";
-
-        TeamEntity team = new TeamEntity();
-
-        UserEntity author = UserTestUtil.createUser("author", "author", false);
-        author.setTeam(team);
-
-        UserEntity oldReviewer = UserTestUtil.createUser(oldReviewerId, "oldReviewer", false);
-        oldReviewer.setTeam(team);
-
-        UserEntity newReviewer = UserTestUtil.createUser("r2", "newReviewer", true);
-        newReviewer.setTeam(team);
-
-        PullRequestEntity pr = new PullRequestEntity();
-        pr.setId(prId);
-        pr.setAuthor(author);
-        pr.setStatus(PullRequestStatus.OPEN);
-        pr.setReviewers(new HashSet<>(List.of(oldReviewer)));
-
-        when(pullRequestRepository.findWithReviewersById(prId)).thenReturn(Optional.of(pr));
-        when(userRepository.findById(oldReviewerId)).thenReturn(Optional.of(oldReviewer));
-        when(userRepository.findByTeamAndIsActiveTrue(team)).thenReturn(List.of(newReviewer, author));
-        when(pullRequestRepository.save(any(PullRequestEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        // Act
-        PullRequestEntity result = pullRequestService.reassignReviewer(prId, oldReviewerId);
-
-        // Assert
-        assertTrue(result.getReviewers().contains(newReviewer));
-        assertFalse(result.getReviewers().contains(oldReviewer));
-        verify(pullRequestRepository).save(any(PullRequestEntity.class));
-    }
-
-    @Test
-    void reassignReviewer_ShouldThrownException_WhenPullRequestNotFound() {
-        // Arrange
-        String prId = "PR-404";
-        String oldReviewerId = "r1";
-        when(pullRequestRepository.findWithReviewersById(prId)).thenReturn(Optional.empty());
-
-        // Act | Assert
-        NotFoundException ex = assertThrows(NotFoundException.class,
-                () -> pullRequestService.reassignReviewer(prId, oldReviewerId)
-        );
-
-        assertEquals(ErrorCode.NOT_FOUND, ex.getErrorCode());
-        verify(pullRequestRepository, never()).save(any(PullRequestEntity.class));
-    }
-
-    @Test
-    void reassignReviewer_ShouldThrownException_WhenPRAlreadyMerged() {
-        // Arrange
-        String prId = "PR-1";
-        String oldReviewerId = "r1";
-
-        PullRequestEntity mergedPR = new PullRequestEntity();
-        mergedPR.setId(prId);
-        mergedPR.setStatus(PullRequestStatus.MERGED);
-
-        when(pullRequestRepository.findWithReviewersById(prId)).thenReturn(Optional.of(mergedPR));
-
-        // Act | Assert
-        PrMergedException ex = assertThrows(PrMergedException.class,
-                () -> pullRequestService.reassignReviewer(prId, oldReviewerId)
-        );
-
-        assertEquals(ErrorCode.PR_MERGED, ex.getErrorCode());
-        verify(pullRequestRepository, never()).save(any(PullRequestEntity.class));
-    }
-
-
-    @Test
-    void reassignReviewer_ShouldThrownException_WhenOldReviewerNotFound() {
-        // Arrange
-        String prId = "PR-1";
-        String oldReviewerId = "r1";
-
-        PullRequestEntity pr = new PullRequestEntity();
-        pr.setId(prId);
-        pr.setStatus(PullRequestStatus.OPEN);
-        pr.setReviewers(Set.of());
-
-        when(pullRequestRepository.findWithReviewersById(prId)).thenReturn(Optional.of(pr));
-        when(userRepository.findById(oldReviewerId)).thenReturn(Optional.empty());
-
-        // Act | Assert
-        NotFoundException ex = assertThrows(NotFoundException.class,
-                () -> pullRequestService.reassignReviewer(prId, oldReviewerId)
-        );
-
-        assertEquals(ErrorCode.NOT_FOUND, ex.getErrorCode());
-        verify(pullRequestRepository, never()).save(any(PullRequestEntity.class));
-    }
-
-    @Test
-    void reassignReviewer_ShouldThrownException_WhenOldReviewerNotAssigned() {
-        // Arrange
-        String prId = "PR-1";
-        String oldReviewerId = "r1";
-
-        PullRequestEntity pr = new PullRequestEntity();
-        pr.setId(prId);
-        pr.setStatus(PullRequestStatus.OPEN);
-        pr.setReviewers(new HashSet<>());
-
-        UserEntity oldReviewer = UserTestUtil.createUser(oldReviewerId, "oldReviewer", true);
-
-        when(pullRequestRepository.findWithReviewersById(prId)).thenReturn(Optional.of(pr));
-        when(userRepository.findById(oldReviewerId)).thenReturn(Optional.of(oldReviewer));
-
-        // Act | Assert
-        NoAssignedForPrException ex = assertThrows(NoAssignedForPrException.class,
-                () -> pullRequestService.reassignReviewer(prId, oldReviewerId)
-        );
-
-        assertEquals(ErrorCode.NOT_ASSIGNED, ex.getErrorCode());
-        verify(pullRequestRepository, never()).save(any(PullRequestEntity.class));
-    }
-
-    @Test
-    void reassignReviewer_ShouldThrownException_WhenAuthorHasNoTeam() {
-        // Arrange
-        String prId = "PR-1";
-        String oldReviewerId = "r1";
-
-        UserEntity author = UserTestUtil.createUser("author", "author", true);
-        author.setTeam(null);
-
-        UserEntity oldReviewer = UserTestUtil.createUser(oldReviewerId, "oldReviewer", true);
-
-        PullRequestEntity pr = new PullRequestEntity();
-        pr.setId(prId);
-        pr.setStatus(PullRequestStatus.OPEN);
-        pr.setAuthor(author);
-        pr.setReviewers(new HashSet<>(List.of(oldReviewer)));
-
-        when(pullRequestRepository.findWithReviewersById(prId)).thenReturn(Optional.of(pr));
-        when(userRepository.findById(oldReviewerId)).thenReturn(Optional.of(oldReviewer));
-
-        // Act | Assert
-        NotFoundException ex = assertThrows(NotFoundException.class,
-                () -> pullRequestService.reassignReviewer(prId, oldReviewerId)
-        );
-
-        assertEquals(ErrorCode.NOT_FOUND, ex.getErrorCode());
-        verify(pullRequestRepository, never()).save(any(PullRequestEntity.class));
-    }
-
-    @Test
-    void reassignReviewer_ShouldThrownException_WhenNoAvailableReplacementFound() {
-        // Arrange
-        String prId = "PR-1";
-        String oldReviewerId = "r1";
-
-        TeamEntity team = new TeamEntity();
-
-        UserEntity author = UserTestUtil.createUser("author", "author", true);
-        author.setTeam(team);
-
-        UserEntity oldReviewer = UserTestUtil.createUser(oldReviewerId, "oldReviewer", true);
-        oldReviewer.setTeam(team);
-
-        PullRequestEntity pr = new PullRequestEntity();
-        pr.setId(prId);
-        pr.setAuthor(author);
-        pr.setStatus(PullRequestStatus.OPEN);
-        pr.setReviewers(new HashSet<>(List.of(oldReviewer)));
-
-        when(pullRequestRepository.findWithReviewersById(prId)).thenReturn(Optional.of(pr));
-        when(userRepository.findById(oldReviewerId)).thenReturn(Optional.of(oldReviewer));
-        when(userRepository.findByTeamAndIsActiveTrue(team)).thenReturn(List.of(author, oldReviewer));
-
-        // Act | Assert
-        NoSuitableCandidatesException ex = assertThrows(NoSuitableCandidatesException.class,
-                () -> pullRequestService.reassignReviewer(prId, oldReviewerId)
-        );
-
-        assertEquals(ErrorCode.NO_CANDIDATE, ex.getErrorCode());
-        verify(pullRequestRepository, never()).save(any(PullRequestEntity.class));
-    }
+  @Mock private PullRequestRepository pullRequestRepository;
+
+  @Mock private UserRepository userRepository;
+
+  @InjectMocks private PullRequestServiceDefaultImpl pullRequestService;
+
+  @Test
+  void createPullRequest_ShouldCreatePr_WhenValidInput() {
+    // Arrange
+    final String prId = "PR-1";
+    final String title = "Test PR";
+    final String authorId = "user-1";
+
+    TeamEntity team = new TeamEntity();
+
+    UserEntity author = UserTestUtil.createUser(authorId, "author", true);
+    author.setTeam(team);
+
+    UserEntity reviewer1 = UserTestUtil.createUser("r1", "rev1", true);
+    reviewer1.setTeam(team);
+
+    UserEntity reviewer2 = UserTestUtil.createUser("r2", "rev2", true);
+    reviewer2.setTeam(team);
+
+    when(pullRequestRepository.existsById(prId)).thenReturn(false);
+    when(userRepository.findById(authorId)).thenReturn(Optional.of(author));
+    when(userRepository.findByTeamAndIsActiveTrue(team))
+        .thenReturn(List.of(author, reviewer1, reviewer2));
+    when(pullRequestRepository.save(any(PullRequestEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    // Act
+    PullRequestEntity result = pullRequestService.createPullRequest(prId, title, authorId);
+
+    // Assert
+    assertEquals(prId, result.getId());
+    assertEquals(title, result.getTitle());
+    assertEquals(author, result.getAuthor());
+    assertEquals(2, result.getReviewers().size());
+    assertFalse(result.isNeedMoreReviewers());
+    verify(pullRequestRepository).save(any(PullRequestEntity.class));
+  }
+
+  @Test
+  void createPullRequest_ShouldCreatePr_WhenNotEnoughReviewers() {
+    // Arrange
+    final String prId = "PR-1";
+    final String title = "Test PR";
+    final String authorId = "user-1";
+
+    TeamEntity team = new TeamEntity();
+
+    UserEntity author = UserTestUtil.createUser(authorId, "author", true);
+    author.setTeam(team);
+
+    UserEntity reviewer1 = UserTestUtil.createUser("r1", "rev1", true);
+    reviewer1.setTeam(team);
+
+    when(pullRequestRepository.existsById(prId)).thenReturn(false);
+    when(userRepository.findById(authorId)).thenReturn(Optional.of(author));
+    when(userRepository.findByTeamAndIsActiveTrue(team)).thenReturn(List.of(author, reviewer1));
+    when(pullRequestRepository.save(any(PullRequestEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    // Act
+    PullRequestEntity result = pullRequestService.createPullRequest(prId, title, authorId);
+
+    // Assert
+    assertEquals(prId, result.getId());
+    assertEquals(title, result.getTitle());
+    assertEquals(author, result.getAuthor());
+    assertEquals(1, result.getReviewers().size());
+    assertTrue(result.isNeedMoreReviewers());
+    verify(pullRequestRepository).save(any(PullRequestEntity.class));
+  }
+
+  @Test
+  void createPullRequest_ShouldThrownException_WhenPrAlreadyExist() {
+    // Arrange
+    final String prId = "PR-1-exist";
+    final String title = "Test PR";
+    final String authorId = "user-1";
+
+    when(pullRequestRepository.existsById(prId)).thenReturn(true);
+
+    // Act | Assert
+    PrAlreadyExistException ex =
+        assertThrows(
+            PrAlreadyExistException.class,
+            () -> pullRequestService.createPullRequest(prId, title, authorId));
+
+    assertEquals(ErrorCode.PR_EXISTS, ex.getErrorCode());
+    verify(pullRequestRepository, never()).save(any(PullRequestEntity.class));
+  }
+
+  @Test
+  void createPullRequest_ShouldThrownException_WhenAuthorNotFound() {
+    // Arrange
+    final String prId = "PR-1";
+    final String title = "Test PR";
+    final String authorId = "user-1";
+
+    when(pullRequestRepository.existsById(prId)).thenReturn(false);
+    when(userRepository.findById(authorId)).thenReturn(Optional.empty());
+
+    // Act | Assert
+    NotFoundException ex =
+        assertThrows(
+            NotFoundException.class,
+            () -> pullRequestService.createPullRequest(prId, title, authorId));
+
+    assertEquals(ErrorCode.NOT_FOUND, ex.getErrorCode());
+    verify(pullRequestRepository, never()).save(any(PullRequestEntity.class));
+  }
+
+  @Test
+  void createPullRequest_ShouldThrownException_WhenAuthorIsNotActive() {
+    // Arrange
+    final String prId = "PR-1";
+    final String title = "Test PR";
+    final String authorId = "user-1";
+
+    UserEntity author = UserTestUtil.createUser(authorId, "author", false);
+
+    when(pullRequestRepository.existsById(prId)).thenReturn(false);
+    when(userRepository.findById(authorId)).thenReturn(Optional.of(author));
+
+    // Act | Assert
+    NoSuitableCandidatesException ex =
+        assertThrows(
+            NoSuitableCandidatesException.class,
+            () -> pullRequestService.createPullRequest(prId, title, authorId));
+
+    assertEquals(ErrorCode.NO_CANDIDATE, ex.getErrorCode());
+    verify(pullRequestRepository, never()).save(any(PullRequestEntity.class));
+  }
+
+  @Test
+  void createPullRequest_ShouldThrownException_WhenAuthorDoesntHaveTeam() {
+    // Arrange
+    final String prId = "PR-1";
+    final String title = "Test PR";
+    final String authorId = "user-1";
+
+    UserEntity author = UserTestUtil.createUser(authorId, "author", true);
+    author.setTeam(null);
+
+    when(pullRequestRepository.existsById(prId)).thenReturn(false);
+    when(userRepository.findById(authorId)).thenReturn(Optional.of(author));
+
+    // Act | Assert
+    NotFoundException ex =
+        assertThrows(
+            NotFoundException.class,
+            () -> pullRequestService.createPullRequest(prId, title, authorId));
+
+    assertEquals(ErrorCode.NOT_FOUND, ex.getErrorCode());
+    verify(pullRequestRepository, never()).save(any(PullRequestEntity.class));
+  }
+
+  @Test
+  void mergePullRequest_ShouldSetMergedStatus_WhenNotMergedYet() {
+    // Arrange
+    final String prId = "PR-1";
+    PullRequestEntity pr = new PullRequestEntity();
+    pr.setId(prId);
+    pr.setStatus(PullRequestStatus.OPEN);
+
+    when(pullRequestRepository.findWithReviewersById(prId)).thenReturn(Optional.of(pr));
+    when(pullRequestRepository.save(any(PullRequestEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    // Act
+    PullRequestEntity result = pullRequestService.mergePullRequest(prId);
+
+    // Assert
+    assertEquals(PullRequestStatus.MERGED, result.getStatus());
+    assertNotNull(result.getMergedAt());
+    verify(pullRequestRepository).save(any(PullRequestEntity.class));
+  }
+
+  @Test
+  void mergePullRequest_ShouldThrownException_WhenPrNotFound() {
+    // Arrange
+    final String prId = "PR-1-not-found";
+
+    when(pullRequestRepository.findWithReviewersById(prId)).thenReturn(Optional.empty());
+
+    // Act | Assert
+    NotFoundException ex =
+        assertThrows(NotFoundException.class, () -> pullRequestService.mergePullRequest(prId));
+
+    assertEquals(ErrorCode.NOT_FOUND, ex.getErrorCode());
+    verify(pullRequestRepository, never()).save(any(PullRequestEntity.class));
+  }
+
+  @Test
+  void mergePullRequest_ShouldNothingWillHappen_WhenSetStatusFromMergedToMerged() {
+    // Arrange
+    final String prId = "PR-1";
+    PullRequestEntity pr = new PullRequestEntity();
+    pr.setId(prId);
+    pr.setStatus(PullRequestStatus.MERGED);
+    LocalDateTime mergedAt = LocalDateTime.of(2004, 8, 8, 8, 0);
+    pr.setMergedAt(mergedAt);
+
+    when(pullRequestRepository.findWithReviewersById(prId)).thenReturn(Optional.of(pr));
+
+    // Act
+    PullRequestEntity result = pullRequestService.mergePullRequest(prId);
+
+    // Assert
+    assertEquals(PullRequestStatus.MERGED, result.getStatus());
+    assertEquals(mergedAt, result.getMergedAt());
+    verify(pullRequestRepository, never()).save(any(PullRequestEntity.class));
+  }
+
+  @Test
+  void reassignReviewer_ShouldReplaceReviewer_WhenValid() {
+    // Arrange
+    final String prId = "PR-1";
+    final String oldReviewerId = "r1";
+    final String authorId = "author";
+    final String teamTitle = "title";
+
+    TeamEntity team = new TeamEntity();
+    team.setTitle(teamTitle);
+
+    UserEntity author = UserTestUtil.createUser(authorId, "author", false);
+    author.setTeam(team);
+
+    UserEntity oldReviewer = UserTestUtil.createUser(oldReviewerId, "oldReviewer", false);
+    oldReviewer.setTeam(team);
+
+    UserEntity newReviewer = UserTestUtil.createUser("r2", "newReviewer", true);
+    newReviewer.setTeam(team);
+
+    PullRequestEntity pr = new PullRequestEntity();
+    pr.setId(prId);
+    pr.setAuthor(author);
+    pr.setStatus(PullRequestStatus.OPEN);
+    pr.setReviewers(new HashSet<>(List.of(oldReviewer)));
+
+    when(pullRequestRepository.findWithReviewersById(prId)).thenReturn(Optional.of(pr));
+    when(userRepository.findById(oldReviewerId)).thenReturn(Optional.of(oldReviewer));
+    when(userRepository.findActiveReplacements(team.getTitle(), Set.of(authorId, oldReviewerId)))
+        .thenReturn(List.of(newReviewer, author));
+    when(pullRequestRepository.save(any(PullRequestEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    // Act
+    PullRequestEntity result = pullRequestService.reassignReviewer(prId, oldReviewerId);
+
+    // Assert
+    assertTrue(result.getReviewers().contains(newReviewer));
+    assertFalse(result.getReviewers().contains(oldReviewer));
+    verify(pullRequestRepository).save(any(PullRequestEntity.class));
+  }
+
+  @Test
+  void reassignReviewer_ShouldThrownException_WhenPullRequestNotFound() {
+    // Arrange
+    final String prId = "PR-404";
+    final String oldReviewerId = "r1";
+    when(pullRequestRepository.findWithReviewersById(prId)).thenReturn(Optional.empty());
+
+    // Act | Assert
+    NotFoundException ex =
+        assertThrows(
+            NotFoundException.class,
+            () -> pullRequestService.reassignReviewer(prId, oldReviewerId));
+
+    assertEquals(ErrorCode.NOT_FOUND, ex.getErrorCode());
+    verify(pullRequestRepository, never()).save(any(PullRequestEntity.class));
+  }
+
+  @Test
+  void reassignReviewer_ShouldThrownException_WhenPullRequestAlreadyMerged() {
+    // Arrange
+    final String prId = "PR-1";
+    final String oldReviewerId = "r1";
+
+    PullRequestEntity mergedPr = new PullRequestEntity();
+    mergedPr.setId(prId);
+    mergedPr.setStatus(PullRequestStatus.MERGED);
+
+    when(pullRequestRepository.findWithReviewersById(prId)).thenReturn(Optional.of(mergedPr));
+
+    // Act | Assert
+    PrMergedException ex =
+        assertThrows(
+            PrMergedException.class,
+            () -> pullRequestService.reassignReviewer(prId, oldReviewerId));
+
+    assertEquals(ErrorCode.PR_MERGED, ex.getErrorCode());
+    verify(pullRequestRepository, never()).save(any(PullRequestEntity.class));
+  }
+
+  @Test
+  void reassignReviewer_ShouldThrownException_WhenOldReviewerNotFound() {
+    // Arrange
+    final String prId = "PR-1";
+    final String oldReviewerId = "r1";
+
+    PullRequestEntity pr = new PullRequestEntity();
+    pr.setId(prId);
+    pr.setStatus(PullRequestStatus.OPEN);
+    pr.setReviewers(Set.of());
+
+    when(pullRequestRepository.findWithReviewersById(prId)).thenReturn(Optional.of(pr));
+    when(userRepository.findById(oldReviewerId)).thenReturn(Optional.empty());
+
+    // Act | Assert
+    NotFoundException ex =
+        assertThrows(
+            NotFoundException.class,
+            () -> pullRequestService.reassignReviewer(prId, oldReviewerId));
+
+    assertEquals(ErrorCode.NOT_FOUND, ex.getErrorCode());
+    verify(pullRequestRepository, never()).save(any(PullRequestEntity.class));
+  }
+
+  @Test
+  void reassignReviewer_ShouldThrownException_WhenOldReviewerNotAssigned() {
+    // Arrange
+    final String prId = "PR-1";
+    final String oldReviewerId = "r1";
+
+    PullRequestEntity pr = new PullRequestEntity();
+    pr.setId(prId);
+    pr.setStatus(PullRequestStatus.OPEN);
+    pr.setReviewers(new HashSet<>());
+
+    UserEntity oldReviewer = UserTestUtil.createUser(oldReviewerId, "oldReviewer", true);
+
+    when(pullRequestRepository.findWithReviewersById(prId)).thenReturn(Optional.of(pr));
+    when(userRepository.findById(oldReviewerId)).thenReturn(Optional.of(oldReviewer));
+
+    // Act | Assert
+    NoAssignedForPrException ex =
+        assertThrows(
+            NoAssignedForPrException.class,
+            () -> pullRequestService.reassignReviewer(prId, oldReviewerId));
+
+    assertEquals(ErrorCode.NOT_ASSIGNED, ex.getErrorCode());
+    verify(pullRequestRepository, never()).save(any(PullRequestEntity.class));
+  }
+
+  @Test
+  void reassignReviewer_ShouldThrownException_WhenAuthorHasNoTeam() {
+    // Arrange
+    final String prId = "PR-1";
+    final String oldReviewerId = "r1";
+
+    UserEntity author = UserTestUtil.createUser("author", "author", true);
+    author.setTeam(null);
+
+    UserEntity oldReviewer = UserTestUtil.createUser(oldReviewerId, "oldReviewer", true);
+
+    PullRequestEntity pr = new PullRequestEntity();
+    pr.setId(prId);
+    pr.setStatus(PullRequestStatus.OPEN);
+    pr.setAuthor(author);
+    pr.setReviewers(new HashSet<>(List.of(oldReviewer)));
+
+    when(pullRequestRepository.findWithReviewersById(prId)).thenReturn(Optional.of(pr));
+    when(userRepository.findById(oldReviewerId)).thenReturn(Optional.of(oldReviewer));
+
+    // Act | Assert
+    NotFoundException ex =
+        assertThrows(
+            NotFoundException.class,
+            () -> pullRequestService.reassignReviewer(prId, oldReviewerId));
+
+    assertEquals(ErrorCode.NOT_FOUND, ex.getErrorCode());
+    verify(pullRequestRepository, never()).save(any(PullRequestEntity.class));
+  }
+
+  @Test
+  void reassignReviewer_ShouldThrownException_WhenNoAvailableReplacementFound() {
+    // Arrange
+    final String prId = "PR-1";
+    final String oldReviewerId = "r1";
+    final String authorId = "author";
+    final String teamTitle = "teamTitle";
+
+    TeamEntity team = new TeamEntity();
+    team.setTitle(teamTitle);
+
+    UserEntity author = UserTestUtil.createUser(authorId, "author", true);
+    author.setTeam(team);
+
+    UserEntity oldReviewer = UserTestUtil.createUser(oldReviewerId, "oldReviewer", true);
+    oldReviewer.setTeam(team);
+
+    PullRequestEntity pr = new PullRequestEntity();
+    pr.setId(prId);
+    pr.setAuthor(author);
+    pr.setStatus(PullRequestStatus.OPEN);
+    pr.setReviewers(new HashSet<>(List.of(oldReviewer)));
+
+    when(pullRequestRepository.findWithReviewersById(prId)).thenReturn(Optional.of(pr));
+    when(userRepository.findById(oldReviewerId)).thenReturn(Optional.of(oldReviewer));
+    when(userRepository.findActiveReplacements(teamTitle, Set.of(authorId, oldReviewerId)))
+        .thenReturn(List.of());
+
+    // Act | Assert
+    NoSuitableCandidatesException ex =
+        assertThrows(
+            NoSuitableCandidatesException.class,
+            () -> pullRequestService.reassignReviewer(prId, oldReviewerId));
+
+    assertEquals(ErrorCode.NO_CANDIDATE, ex.getErrorCode());
+    verify(pullRequestRepository, never()).save(any(PullRequestEntity.class));
+  }
 }

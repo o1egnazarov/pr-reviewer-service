@@ -8,6 +8,7 @@ tags:
   - name: Users
   - name: PullRequests
   - name: TeamManagements
+  - name: Statistics
   - name: Health
 
 components:
@@ -36,6 +37,74 @@ components:
         type: string
       description: Идентификатор пользователя
   schemas:
+    AssignmentStats:
+      type: object
+      properties:
+        totalActiveUsers:
+          type: integer
+          description: Количество активных пользователей в системе
+        totalInactiveUsers:
+          type: integer
+          description: Количество неактивных пользователей в системе
+        userAssignments:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserAssignmentStats'
+          description: Список пользователей и количество их назначений на PR
+        totalOpenPrsNeedingReview:
+          type: integer
+          description: Количество PR на которые нужны дополнительные ревьюеры
+        prAssignments:
+          type: array
+          items:
+            $ref: '#/components/schemas/PullRequestAssignmentStats'
+          description: Список PR и количество назначенных на них ревьюеров
+        prStatusCount:
+          type: array
+          items:
+            $ref: '#/components/schemas/PullRequestStatusCount'
+          description: Список PR и их статусов
+
+
+    UserAssignmentStats:
+      type: object
+      properties:
+        userId:
+          type: string
+          description: Уникальный идентификатор пользователя
+        assignedPRsCount:
+          type: integer
+          description: Сколько PR назначено пользователю как ревьюверу
+
+    PullRequestAssignmentStats:
+      type: object
+      properties:
+        prId:
+          type: string
+          description: Уникальный идентификатор PR
+        reviewersCount:
+          type: integer
+          description: Сколько ревьюеров назначенно на этот PR
+      example:
+        prId: pr-100
+        reviewersCount: 10
+
+    PullRequestStatusCount:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - OPEN
+            - MERGED
+          description: Статус PR
+        count:
+          type: integer
+          description: Количество PR
+      example:
+        status: OPEN
+        count: 10
+
     ErrorResponse:
       type: object
       required: [ error ]
@@ -134,6 +203,41 @@ components:
           enum: [ OPEN, MERGED ]
 
 paths:
+  /stats:
+    get:
+      operationId: getStatistics
+      tags: [ Statistics ]
+      summary: Получить статистику назначений PR
+      description: >
+        Возвращает агрегированную статистику по пользователям, PR и общие метрики.
+        Используется для мониторинга нагрузки и эффективности распределения ревьюверов.
+      responses:
+        '200':
+          description: Статистика успешно получена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssignmentStats'
+              example:
+                totalActiveUsers: 10
+                totalInActiveUsers: 2
+                userAssignments:
+                  - userId: "u1"
+                    assignedPRsCount: 5
+                  - userId: "u2"
+                    assignedPRsCount: 3
+                totalOpenPrsNeedingReview: 10
+                prAssignments:
+                  - prId: "pr123"
+                    reviewersCount: 2
+                  - prId: "pr321"
+                    reviewersCount: 0
+                prStatusCount:
+                  - status: OPEN
+                    count: 10
+                  - status: MERGED
+                    count: 2
+
   /team/add:
     post:
       operationId: addTeam

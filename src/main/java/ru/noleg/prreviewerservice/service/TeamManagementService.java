@@ -1,9 +1,8 @@
 package ru.noleg.prreviewerservice.service;
 
+import java.util.List;
 import ru.noleg.prreviewerservice.entity.PullRequestEntity;
 
-import java.util.List;
-
 public interface TeamManagementService {
-    List<PullRequestEntity> deactivateUsersAndReassign(String teamTitle);
+  List<PullRequestEntity> deactivateUsersAndReassign(String teamTitle);
 }

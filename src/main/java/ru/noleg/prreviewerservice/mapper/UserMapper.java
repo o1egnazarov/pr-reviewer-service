@@ -8,9 +8,9 @@ import ru.noleg.prreviewerservice.entity.UserEntity;
 
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface UserMapper {
-    @Mapping(target = "user.userId", source = "id")
-    @Mapping(target = "user.username", source = "username")
-    @Mapping(target = "user.isActive", source = "active")
-    @Mapping(target = "user.teamName", source = "team.title")
-    SetIsActive200Response mapToUserResponse(UserEntity userEntity);
+  @Mapping(target = "user.userId", source = "id")
+  @Mapping(target = "user.username", source = "username")
+  @Mapping(target = "user.isActive", source = "active")
+  @Mapping(target = "user.teamName", source = "team.title")
+  SetIsActive200Response mapToUserResponse(UserEntity userEntity);
 }
