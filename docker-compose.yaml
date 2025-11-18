@@ -3,11 +3,11 @@ services:
     container_name: prreviewer_service
     image: prreviewer-service:latest
     ports:
-      - "${BACKEND_PORT}:8080"
+      - "${BACKEND_PORT:-8080}:8080"
     environment:
-      SPRING_DATASOURCE_URL: ${DATASOURCE_URL}
-      SPRING_DATASOURCE_USERNAME: ${DATASOURCE_USERNAME}
-      SPRING_DATASOURCE_PASSWORD: ${DATASOURCE_PASSWORD}
+      SPRING_DATASOURCE_URL: ${DATASOURCE_URL:-jdbc:postgresql://db:5432/pr_reviewer_db}
+      SPRING_DATASOURCE_USERNAME: ${DATASOURCE_USERNAME:-noleg}
+      SPRING_DATASOURCE_PASSWORD: ${DATASOURCE_PASSWORD:-root}
     depends_on:
       db:
         condition: service_healthy
@@ -17,13 +17,13 @@ services:
     image: postgres:16
     restart: always
     environment:
-      POSTGRES_USER: ${DATASOURCE_USERNAME}
-      POSTGRES_PASSWORD: ${DATASOURCE_PASSWORD}
-      POSTGRES_DB: ${DATASOURCE_NAME}
+      POSTGRES_USER: ${DATASOURCE_USERNAME:-noleg}
+      POSTGRES_PASSWORD: ${DATASOURCE_PASSWORD:-root}
+      POSTGRES_DB: ${DATASOURCE_NAME:-pr_reviewer_db}
     ports:
-      - "${POSTGRES_PORT}:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
-      test: [ "CMD-SHELL", "psql -U ${DATASOURCE_USERNAME} -d ${DATASOURCE_NAME} -c 'SELECT 1'" ]
+      test: [ "CMD-SHELL", "psql -U ${DATASOURCE_USERNAME:-noleg} -d ${DATASOURCE_NAME:-pr_reviewer_db} -c 'SELECT 1'" ]
       interval: 5s
       timeout: 5s
       retries: 10
